@@ -2,7 +2,7 @@
 #
 # Auto install Shadowsocks Server (all version)
 #
-# Copyright (C) 2016-2017 Teddysun <i@teddysun.com>
+# Copyright (C) 2016-2018 Teddysun <i@teddysun.com>
 #
 # System Required:  CentOS 6+, Debian7+, Ubuntu12+
 #
@@ -11,13 +11,17 @@
 # https://github.com/shadowsocks/shadowsocks-go
 # https://github.com/shadowsocks/shadowsocks-libev
 # https://github.com/shadowsocks/shadowsocks-windows
-# https://github.com/shadowsocksr/shadowsocksr
+# https://github.com/shadowsocksr-rm/shadowsocksr
+# https://github.com/shadowsocksrr/shadowsocksr
+# https://github.com/shadowsocksrr/shadowsocksr-csharp
 #
 # Thanks:
 # @clowwindy  <https://twitter.com/clowwindy>
 # @breakwa11  <https://twitter.com/breakwa11>
 # @cyfdecyf   <https://twitter.com/cyfdecyf>
 # @madeye     <https://github.com/madeye>
+# @linusyang  <https://github.com/linusyang>
+# @Akkariiin  <https://github.com/Akkariiin>
 # 
 # Intro:  https://teddysun.com/486.html
 
@@ -37,8 +41,8 @@ software=(Shadowsocks-Python ShadowsocksR Shadowsocks-Go Shadowsocks-libev)
 libsodium_file="libsodium-1.0.16"
 libsodium_url="https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz"
 
-mbedtls_file="mbedtls-2.6.0"
-mbedtls_url="http://dl.teddysun.com/files/mbedtls-2.6.0-gpl.tgz"
+mbedtls_file="mbedtls-2.9.0"
+mbedtls_url="https://tls.mbed.org/download/mbedtls-2.9.0-gpl.tgz"
 
 shadowsocks_python_file="shadowsocks-master"
 shadowsocks_python_url="https://github.com/shadowsocks/shadowsocks/archive/master.zip"
@@ -47,17 +51,17 @@ shadowsocks_python_config="/etc/shadowsocks-python/config.json"
 shadowsocks_python_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks"
 shadowsocks_python_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-debian"
 
-shadowsocks_r_file="shadowsocksr-manyuser"
-shadowsocks_r_url="https://github.com/teddysun/shadowsocksr/archive/manyuser.zip"
+shadowsocks_r_file="shadowsocksr-3.2.2"
+shadowsocks_r_url="https://github.com/shadowsocksrr/shadowsocksr/archive/3.2.2.tar.gz"
 shadowsocks_r_init="/etc/init.d/shadowsocks-r"
 shadowsocks_r_config="/etc/shadowsocks-r/config.json"
 shadowsocks_r_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocksR"
 shadowsocks_r_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocksR-debian"
 
 shadowsocks_go_file_64="shadowsocks-server-linux64-1.2.1"
-shadowsocks_go_url_64="http://dl.teddysun.com/shadowsocks/shadowsocks-server-linux64-1.2.1.gz"
+shadowsocks_go_url_64="https://dl.lamp.sh/shadowsocks/shadowsocks-server-linux64-1.2.1.gz"
 shadowsocks_go_file_32="shadowsocks-server-linux32-1.2.1"
-shadowsocks_go_url_32="http://dl.teddysun.com/shadowsocks/shadowsocks-server-linux32-1.2.1.gz"
+shadowsocks_go_url_32="https://dl.lamp.sh/shadowsocks/shadowsocks-server-linux32-1.2.1.gz"
 shadowsocks_go_init="/etc/init.d/shadowsocks-go"
 shadowsocks_go_config="/etc/shadowsocks-go/config.json"
 shadowsocks_go_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-go"
@@ -114,12 +118,14 @@ aes-192-ctr
 aes-128-ctr
 chacha20-ietf
 chacha20
+salsa20
+xchacha20
+xsalsa20
 rc4-md5
-rc4-md5-6
 )
 # Reference URL:
-# https://github.com/breakwa11/shadowsocks-rss/blob/master/ssr.md
-# https://github.com/breakwa11/shadowsocks-rss/wiki/config.json
+# https://github.com/shadowsocksr-rm/shadowsocks-rss/blob/master/ssr.md
+# https://github.com/shadowsocksrr/shadowsocksr/commit/a3cf0254508992b7126ab1151df0c2f10bf82680
 # Protocol
 protocols=(
 origin
@@ -130,6 +136,10 @@ auth_aes128_md5
 auth_aes128_sha1
 auth_chain_a
 auth_chain_b
+auth_chain_c
+auth_chain_d
+auth_chain_e
+auth_chain_f
 )
 # obfs
 obfs=(
@@ -330,7 +340,7 @@ download_files() {
             download "${shadowsocks_python_init}" "${shadowsocks_python_debian}"
         fi
     elif [ "${selected}" == "2" ]; then
-        download "${shadowsocks_r_file}.zip" "${shadowsocks_r_url}"
+        download "${shadowsocks_r_file}.tar.gz" "${shadowsocks_r_url}"
         if check_sys packageManager yum; then
             download "${shadowsocks_r_init}" "${shadowsocks_r_centos}"
         elif check_sys packageManager apt; then
@@ -488,13 +498,16 @@ elif [ "${selected}" == "4" ]; then
 {
     "server":${server_value},
     "server_port":${shadowsocksport},
-    "local_address":"127.0.0.1",
     "local_port":1080,
     "password":"${shadowsockspwd}",
     "timeout":300,
+    "user":"nobody",
     "method":"${shadowsockscipher}",
     "fast_open":${fast_open},
-    "plugin":"obfs-server --obfs ${shadowsocklibev_obfs}"
+    "nameserver":"8.8.8.8",
+    "mode":"tcp_and_udp",
+    "plugin":"obfs-server",
+    "plugin_opts":"obfs=${shadowsocklibev_obfs}"
 }
 EOF
     else
@@ -502,12 +515,14 @@ EOF
 {
     "server":${server_value},
     "server_port":${shadowsocksport},
-    "local_address":"127.0.0.1",
     "local_port":1080,
     "password":"${shadowsockspwd}",
     "timeout":300,
+    "user":"nobody",
     "method":"${shadowsockscipher}",
-    "fast_open":${fast_open}
+    "fast_open":${fast_open},
+    "nameserver":"8.8.8.8",
+    "mode":"tcp_and_udp"
 }
 EOF
     fi
@@ -529,8 +544,8 @@ install_dependencies() {
         echo -e "[${green}Info${plain}] Checking the EPEL repository complete..."
 
         yum_depends=(
-            unzip gzip openssl openssl-devel gcc python python-devel python-setuptools pcre pcre-devel libtool libevent xmlto
-            autoconf automake make curl curl-devel zlib-devel perl perl-devel cpio expat-devel gettext-devel asciidoc
+            unzip gzip openssl openssl-devel gcc python python-devel python-setuptools pcre pcre-devel libtool libevent
+            autoconf automake make curl curl-devel zlib-devel perl perl-devel cpio expat-devel gettext-devel
             libev-devel c-ares-devel git qrencode
         )
         for depend in ${yum_depends[@]}; do
@@ -603,9 +618,10 @@ install_prepare_password() {
 install_prepare_port() {
     while true
     do
+    dport=$(shuf -i 9000-19999 -n 1)
     echo -e "Please enter a port for ${software[${selected}-1]} [1-65535]"
-    read -p "(Default port: 8989):" shadowsocksport
-    [ -z "${shadowsocksport}" ] && shadowsocksport="8989"
+    read -p "(Default port: ${dport}):" shadowsocksport
+    [ -z "${shadowsocksport}" ] && shadowsocksport=${dport}
     expr ${shadowsocksport} + 1 &>/dev/null
     if [ $? -eq 0 ]; then
         if [ ${shadowsocksport} -ge 1 ] && [ ${shadowsocksport} -le 65535 ] && [ ${shadowsocksport:0:1} != 0 ]; then
@@ -879,12 +895,7 @@ install_shadowsocks_python() {
 
 install_shadowsocks_r() {
     cd ${cur_dir}
-    unzip -q ${shadowsocks_r_file}.zip
-    if [ $? -ne 0 ];then
-        echo -e "[${red}Error${plain}] unzip ${shadowsocks_r_file}.zip failed, please check unzip command."
-        install_cleanup
-        exit 1
-    fi
+    tar zxf ${shadowsocks_r_file}.tar.gz
     mv ${shadowsocks_r_file}/shadowsocks /usr/local/
     if [ -f /usr/local/shadowsocks/server.py ]; then
         chmod +x ${shadowsocks_r_init}
@@ -1129,7 +1140,7 @@ install_cleanup(){
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
     rm -rf ${mbedtls_file} ${mbedtls_file}-gpl.tgz
     rm -rf ${shadowsocks_python_file} ${shadowsocks_python_file}.zip
-    rm -rf ${shadowsocks_r_file} ${shadowsocks_r_file}.zip
+    rm -rf ${shadowsocks_r_file} ${shadowsocks_r_file}.tar.gz
     rm -rf ${shadowsocks_go_file_64}.gz ${shadowsocks_go_file_32}.gz
     rm -rf ${shadowsocks_libev_file} ${shadowsocks_libev_file}.tar.gz
 }
